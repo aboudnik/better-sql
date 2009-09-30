@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql;
 
 import java.lang.reflect.Modifier;
@@ -74,7 +78,7 @@ public class MetaData {
         return clazz.getAnnotation(TABLE.class).value();
     }
 
-    public static void print() {
+    public void print() {
         for (Table table : all)
             if (table != null) {
                 System.out.println(table);

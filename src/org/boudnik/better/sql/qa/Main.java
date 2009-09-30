@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql.qa;
 
 import org.boudnik.better.sql.OBJ;
@@ -12,7 +16,7 @@ public class Main {
     public static void main(final String[] args) throws IllegalAccessException, InstantiationException {
         MetaData metaData = new MetaData(OBJ.class, Foo.class, Zoo.class, Bar.class, Poo.class);
 //        MetaData.process(Boolean.class, OBJ.class, Foo.class, Zoo.class, Bar.class);
-        MetaData.print();
+        metaData.print();
         final Foo foo = new Foo();
         foo.name.set("bla");
         foo.age.set(15);

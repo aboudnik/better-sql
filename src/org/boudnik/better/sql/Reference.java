@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql;
 
 import java.io.Serializable;
@@ -43,7 +47,7 @@ public class Reference<T extends OBJ> implements Serializable, Cloneable {
     public T get() {
         return object;
     }
-    
+
     public String toString() {
         return id == null ? MetaData.getShortName(object.getClass()) + "@" + System.identityHashCode(object) : id.toString();
     }

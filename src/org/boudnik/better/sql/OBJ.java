@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql;
 
 import java.io.File;
@@ -115,10 +119,13 @@ public class OBJ extends _ {
             return meta.fields[index].getType();
         }
 
+        @Override
         public final int hashCode() {
             throw new InternalError("Not supported.");
         }
 
+        @SuppressWarnings({"EqualsWhichDoesntCheckParameterClass"})
+        @Override
         public final boolean equals(Object obj) {
             throw new InternalError("Not supported.");
         }
@@ -241,8 +248,8 @@ public class OBJ extends _ {
     @Type(deferred = false, required = false)
     public class STR extends ComparableFIELD<String> {
         void check(final MetaData.Field meta) {
-            if (meta.getLength() == 0)
-                throw new MetaData.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
+//            if (meta.getLength() == 0)
+//                throw new MetaData.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
         }
 
         public void set(String value) {

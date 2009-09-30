@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql;
 
 import java.io.Serializable;
@@ -39,9 +43,7 @@ public class Identity<T extends OBJ> implements Serializable, Comparable<Identit
     }
 
     public boolean equals(Object obj) {
-        if (obj instanceof Identity)
-            return i1 == ((Identity) obj).i1;
-        return false;
+        return obj instanceof Identity && i1 == ((Identity) obj).i1;
     }
 
     public String toString() {

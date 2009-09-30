@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql.qa;
 
 import javax.crypto.Cipher;
@@ -52,10 +56,11 @@ public class Crypto {
         System.out.println("signature verifies: " + verifies);
     }
 
-    private static void init() throws NoSuchAlgorithmException, NoSuchProviderException {
+    private static void init() throws NoSuchAlgorithmException, NoSuchProviderException, SignatureException, InvalidKeyException {
         keyGen = KeyPairGenerator.getInstance("RSA");
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
         random.setSeed("jopa".getBytes());
         keyGen.initialize(1024, random);
+        signAndVerify();
     }
 }

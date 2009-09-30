@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql.qa.core;
 
 import org.boudnik.better.sql.CodeObject;
@@ -10,6 +14,7 @@ public class Sex extends CodeObject {
     public Sex(String objectId) {
         super("sex." + objectId);
     }
+
     public static final Sex MALE = new Sex("M");
     public static final Sex FEMALE = new Sex("F");
 }
