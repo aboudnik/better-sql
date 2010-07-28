@@ -29,7 +29,7 @@ public class Reference<T extends OBJ> implements Serializable, Cloneable {
             throw new NullPointerException();
         this.object = object;
 //todo        this.id = object.isPersistent() ? object.uuid.get() : null;
-        this.id = object.uuid.get();
+//        this.id = object.uuid.get();
     }
 
     protected void sync() {

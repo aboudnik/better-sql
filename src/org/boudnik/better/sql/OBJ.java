@@ -11,7 +11,7 @@ import java.io.File;
  * @since Aug 31, 2005 6:43:59 PM
  */
 @TABLE(0)
-public class OBJ extends _ {
+public class OBJ {
     static transient volatile boolean done;
     private final transient Object[] values;
     private transient int read;
@@ -19,6 +19,7 @@ public class OBJ extends _ {
     private final transient MetaData.Table meta;
 
     public final UUID uuid = new UUID();
+    protected int length = 0;
 
     public OBJ() {
         if (done)
@@ -311,8 +312,4 @@ public class OBJ extends _ {
             return clazz;
         }
     }
-}
-
-class _ {
-    protected int length = 0;
 }

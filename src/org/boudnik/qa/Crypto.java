@@ -2,7 +2,7 @@
  * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
  */
 
-package org.boudnik.better.sql.qa;
+package org.boudnik.qa;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;

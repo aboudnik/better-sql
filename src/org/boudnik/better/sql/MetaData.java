@@ -12,7 +12,6 @@ import java.util.*;
  * @since Apr 6, 2008 11:24:45 PM
  */
 public class MetaData {
-    public static final String NEW_LINE = System.getProperty("line.separator");
     private static final transient String REQUIRED = "is required";
     private static final transient String ZERO_LENGTH = "zero-length is prohibited";
     private static Table[] all;
@@ -81,7 +80,7 @@ public class MetaData {
     public void print() {
         for (Table table : all)
             if (table != null) {
-                System.out.println(table);
+                System.out.println(table.render());
                 System.out.println();
             }
     }
@@ -104,7 +103,7 @@ public class MetaData {
             final StringBuilder sb = new StringBuilder();
             sb.append(String.format("%s(%d)", getShortName(clazz), getId(clazz)));
             for (Field field : fields)
-                sb.append(NEW_LINE).append(field);
+                sb.append(String.format("%n%s", field));
             return sb.toString();
         }
 
@@ -128,6 +127,18 @@ public class MetaData {
             public IllegalNullable(final OBJ.FIELD field) {
                 super(field, REQUIRED);
             }
+        }
+
+        public String render() {
+            final StringBuilder sb = new StringBuilder();
+            sb.append(String.format("CREATE RABLE %s (", getShortName(clazz)));
+            String comma = "";
+            for (Field field : fields) {
+                sb.append(String.format("%s%n\t%s", comma, field.getDefinition()));
+                comma = ",";
+            }
+            sb.append(String.format("%n)"));
+            return sb.toString();
         }
     }
 
@@ -182,6 +193,14 @@ public class MetaData {
 
         public String toString() {
             return String.format("%s:%s[%d] %s%s%d", getName(), getShortName(getType()), index, isRequired() ? "NOT NULL" : "NULL", isDeferred() ? " DEFERRED " : " ", getLength());
+        }
+
+        public String getDefinition() {
+            return String.format("%s %s %s", getName(), getColumnDefinition(), isRequired() ? "NOT NULL" : "NULL");
+        }
+
+        private String getColumnDefinition() {
+            return getShortName(getType()) + (getLength() == 0 ? "" : String.format("(%d)", getLength()));
         }
     }
 }

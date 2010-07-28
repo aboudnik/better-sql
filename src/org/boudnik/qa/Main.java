@@ -2,11 +2,11 @@
  * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
  */
 
-package org.boudnik.better.sql.qa;
+package org.boudnik.qa;
 
 import org.boudnik.better.sql.OBJ;
 import org.boudnik.better.sql.MetaData;
-import org.boudnik.better.sql.qa.core.*;
+import org.boudnik.qa.core.*;
 
 /**
  * @author shr

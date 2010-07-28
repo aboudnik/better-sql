@@ -2,7 +2,7 @@
  * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
  */
 
-package org.boudnik.better.sql.qa.core;
+package org.boudnik.qa.core;
 
 import org.boudnik.better.sql.TABLE;
 
