@@ -14,6 +14,7 @@ public abstract class CodeObject implements Comparable<CodeObject> {
     protected CodeObject(String objectId) {
         this.objectId = objectId;
         PS.getInstance().storeCodeObject(this);
+
     }
 
     public String getObjectId() {
