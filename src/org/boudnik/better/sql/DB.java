@@ -1,11 +1,17 @@
 package org.boudnik.better.sql;
 
+import com.sun.corba.se.impl.encoding.CDRInputObject;
+import com.sun.xml.internal.bind.v2.runtime.reflect.Accessor;
+
 import java.net.InetAddress;
 import java.net.PasswordAuthentication;
 import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Alexandre Boudnik (BoudnikA)
@@ -19,8 +25,23 @@ public abstract class DB {
     protected String server;
     protected String database;
     private PasswordAuthentication authentication;
-    private Connection connection;
-
+    //todo: pool
+    private static Transaction current;
+    private static final Map<Class<? extends OBJ.FIELD>, String> byType = new HashMap<Class<? extends OBJ.FIELD>, String>() {
+        {
+            put(OBJ.INT.class, "int");
+            put(OBJ.LONG.class, "bigint");
+            put(OBJ.LONGSTR.class, "clob");
+            put(OBJ.IMAGE.class, "int");
+            put(OBJ.UUID.class, "bigint");
+            put(OBJ.REF.class, "bigint");
+            put(OBJ.CODEREF.class, "char(%d)");
+            put(OBJ.BOOL.class, "char(1)");
+            put(OBJ.STR.class, "varchar(%d)");
+            put(OBJ.DATE.class, "date");
+            put(OBJ.TIMESTAMP.class, "timestamp");
+        }
+    };
 
     protected String getUrl() {
         return String.format(format, server, getPort(), database);
@@ -45,7 +66,7 @@ public abstract class DB {
         return t;
     }
 
-    public Connection getConnection() throws SQLException {
+    Connection getConnection() throws SQLException {
         try {
             Class.forName(driverClass);
         } catch (ClassNotFoundException e) {
@@ -53,7 +74,7 @@ public abstract class DB {
         }
         final PasswordAuthentication authentication = getAuthentication();
         synchronized (this) {
-            return connection == null ? connection = DriverManager.getConnection(getUrl(), authentication.getUserName(), String.valueOf(authentication.getPassword())) : connection;
+            return DriverManager.getConnection(getUrl(), authentication.getUserName(), String.valueOf(authentication.getPassword()));
         }
     }
 
@@ -61,9 +82,55 @@ public abstract class DB {
         return port;
     }
 
+    public synchronized Transaction getTransaction() {
+        //todo: pool
+        return current == null ? current = new Transaction() : current;
+    }
+
+    public String get(Class<? extends OBJ.FIELD> type) {
+        return byType.get(type);
+    }
+
+    public void commit() {
+        getTransaction().commit();
+    }
+
+    class Transaction {
+        private Connection connection;
+
+        public synchronized Connection getConnection() {
+            try {
+                return connection == null ? connection = DB.this.getConnection() : connection;
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public PreparedStatement prepareStatement(String sql) throws SQLException {
+            return getConnection().prepareStatement(sql);
+        }
+
+        public void commit() {
+            try {
+                getConnection().commit();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        void rollback() {
+            try {
+                getConnection().rollback();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     public static class Oracle extends DB {
         public Oracle() {
             super("oracle.jdbc.OracleDriver", "jdbc:oracle:thin:@%s:%d/%s", 1521);
+            byType.put(OBJ.INT.class, "number(9)");
         }
     }
 
@@ -116,7 +183,8 @@ public abstract class DB {
 
     public static class H2 extends DB {
         public H2() {
-            super("org.h2.Driver", "jdbc:h2:tcp://%s:%d/%s", 9092);
+//            super("org.h2.Driver", "jdbc:h2:tcp://%s:%d/%s", 9092);
+            super("org.h2.Driver", "jdbc:h2:mem:%3$s", 0);
         }
     }
 }

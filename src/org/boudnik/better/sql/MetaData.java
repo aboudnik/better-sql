@@ -5,6 +5,8 @@
 package org.boudnik.better.sql;
 
 import java.lang.reflect.Modifier;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -18,8 +20,10 @@ public class MetaData {
     private int maxId;
     private static final Map<Integer, MetaData.Table> byId = new HashMap<Integer, MetaData.Table>();
     private static final Map<Class<? extends OBJ>, MetaData.Table> byClass = new HashMap<Class<? extends OBJ>, MetaData.Table>();
+    private static DB db;
 
-    public MetaData(final Class<? extends OBJ>... classList) throws InstantiationException, IllegalAccessException {
+    public MetaData(DB db, final Class<? extends OBJ>... classList) throws InstantiationException, IllegalAccessException {
+        MetaData.db = db;
         maxId = 0;
         for (Class<? extends OBJ> clazz : classList)
             createOne(clazz);
@@ -80,9 +84,15 @@ public class MetaData {
     public void print() {
         for (Table table : all)
             if (table != null) {
-                System.out.println(table.render());
+                System.out.println(table.renderCreate());
                 System.out.println();
             }
+    }
+
+    public void create() throws SQLException {
+        for (Table table : all)
+            if (table != null)
+                table.create();
     }
 
     public static class Table {
@@ -107,6 +117,17 @@ public class MetaData {
             return sb.toString();
         }
 
+        public PreparedStatement prepare(final String sql) throws SQLException {
+            return db.getTransaction().prepareStatement(sql);
+        }
+
+        public void create() throws SQLException {
+            String sql = renderCreate();
+            System.out.println(sql);
+            PreparedStatement statement = db.getTransaction().prepareStatement(sql);
+            statement.executeUpdate();
+        }
+
         public static class IllegalFieldDeclaration extends IllegalArgumentException {
             public IllegalFieldDeclaration(final OBJ.FIELD field, final String message) {
                 this(field.getOwner().getClass(), get(field.getOwner()).fields[field.index].getName(), message);
@@ -129,9 +150,9 @@ public class MetaData {
             }
         }
 
-        public String render() {
+        public String renderCreate() {
             final StringBuilder sb = new StringBuilder();
-            sb.append(String.format("CREATE RABLE %s (", getShortName(clazz)));
+            sb.append(String.format("CREATE TABLE %s (", getShortName(clazz)));
             String comma = "";
             for (Field field : fields) {
                 sb.append(String.format("%s%n\t%s", comma, field.getDefinition()));
@@ -139,6 +160,20 @@ public class MetaData {
             }
             sb.append(String.format("%n)"));
             return sb.toString();
+        }
+
+        public String renderInsert() {
+            final StringBuilder list = new StringBuilder();
+            final StringBuilder values = new StringBuilder();
+            list.append(String.format("INSERT INTO %s (", getShortName(clazz)));
+            String comma = "";
+            for (Field field : fields) {
+                list.append(String.format("%s%s", comma, field.getName()));
+                values.append(String.format("%s?", comma));
+                comma = ",";
+            }
+            list.append(") values (").append(values).append(")");
+            return list.toString();
         }
     }
 
@@ -200,7 +235,11 @@ public class MetaData {
         }
 
         private String getColumnDefinition() {
-            return getShortName(getType()) + (getLength() == 0 ? "" : String.format("(%d)", getLength()));
+            return String.format(getSQLType(), getLength());
+        }
+
+        public String getSQLType() {
+            return db.get(type);
         }
     }
 }

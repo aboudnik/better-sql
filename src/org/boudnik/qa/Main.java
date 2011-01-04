@@ -21,14 +21,9 @@ import java.sql.SQLException;
  */
 public class Main {
     public static void main(final String[] args) throws IllegalAccessException, InstantiationException, UnknownHostException, SQLException {
-        MetaData metaData = new MetaData(OBJ.class, Foo.class, Zoo.class, Bar.class, Poo.class);
-//        MetaData.process(Boolean.class, OBJ.class, Foo.class, Zoo.class, Bar.class);
-
         DB db = DB.open(DB.H2.class, "localhost", "test", new PasswordAuthentication("APP", "".toCharArray()));
-        final Connection connection = db.getConnection();
-        final DatabaseMetaData data = connection.getMetaData();
-        System.out.println(data.getDriverName() + " " + data.getDriverVersion());
-        System.out.println(data.getDatabaseProductVersion() + " " + data.getDatabaseProductVersion());
+        MetaData metaData = new MetaData(db, OBJ.class, Foo.class, Zoo.class, Bar.class, Poo.class);
+
         metaData.print();
         final Foo foo = new Foo();
         foo.name.set("bla");

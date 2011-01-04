@@ -5,6 +5,8 @@
 package org.boudnik.better.sql;
 
 import java.io.File;
+import java.sql.*;
+import java.util.Date;
 
 /**
  * @author shr
@@ -48,8 +50,24 @@ public class OBJ {
         return sb.toString();
     }
 
-    public void save() {
-        System.out.println("OBJ.save");
+    public void save() throws RuntimeException {
+        try {
+            PreparedStatement insert = meta.prepare(meta.renderInsert());
+            for (int i = 0; i < meta.fields.length; i++) {
+                MetaData.Field field = meta.fields[i];
+                Object value = values[i];
+                if (value == null)
+                    insert.setNull(i + 1, Types.NULL);
+                else
+                    insert.setObject(i + 1, value);
+            }
+            int i = insert.executeUpdate();
+            if (i != 1)
+                throw new SQLException("affected rows: " + i);
+            dirty = 0;
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     abstract class FIELD<T> implements Data<T> {
@@ -72,7 +90,8 @@ public class OBJ {
         public void set(final T value) {
             if (meta.fields[index].isRequired() && value == null)
                 throw new NullPointerException();
-            values[index] = value;
+            setValue(value);
+            setDirty();
         }
 
         public T get() {
@@ -180,6 +199,12 @@ public class OBJ {
     }
 
     @Type(deferred = false, required = false)
+    public class LONG extends ComparableFIELD<Long> {
+        void check(final MetaData.Field meta) {
+        }
+    }
+
+    @Type(deferred = false, required = false)
     public class REF<T extends OBJ> extends ComparableFIELD<T> {
         final Class<T> clazz;
 
@@ -260,6 +285,42 @@ public class OBJ {
 
         public ComparableFIELD<Integer> length() {
             return new FUNC<Integer>(INT.class, "length", false, this);
+        }
+    }
+
+    @Type(deferred = false, required = false)
+    public class DATE extends ComparableFIELD<Date> {
+        void check(final MetaData.Field meta) {
+            if (!meta.isRequired())
+                throw new MetaData.Table.IllegalNullable(this);
+        }
+
+        @Override
+        public void set(Date value) {
+            super.set(new java.sql.Date(value.getTime()));
+        }
+
+        @Override
+        public Date get() {
+            return new Date(super.get().getTime());
+        }
+    }
+
+    @Type(deferred = false, required = false)
+    public class TIMESTAMP extends ComparableFIELD<Date> {
+        void check(final MetaData.Field meta) {
+            if (!meta.isRequired())
+                throw new MetaData.Table.IllegalNullable(this);
+        }
+
+        @Override
+        public void set(Date value) {
+            super.set(new java.sql.Timestamp(value.getTime()));
+        }
+
+        @Override
+        public java.sql.Timestamp get() {
+            return new java.sql.Timestamp(super.get().getTime());
         }
     }
 
