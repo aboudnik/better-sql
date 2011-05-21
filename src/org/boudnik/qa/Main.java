@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
  */
@@ -38,3 +39,4 @@ public class Main {
         System.out.println("poo = " + poo);
     }
 }
+
