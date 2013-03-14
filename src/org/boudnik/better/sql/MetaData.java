@@ -12,9 +12,6 @@ import java.util.*;
 /**
  * @author Alexander Boudnik (shr)
  * @since Apr 6, 2008 11:24:45 PM
- *
- * I'm going to put some life in in
- * Now with upgrades
  */
 public class MetaData {
     private static final transient String REQUIRED = "is required";
@@ -25,15 +22,23 @@ public class MetaData {
     private static final Map<Class<? extends OBJ>, MetaData.Table> byClass = new HashMap<Class<? extends OBJ>, MetaData.Table>();
     private static DB db;
 
-    public MetaData(DB db, final Class<? extends OBJ>... classList) throws InstantiationException, IllegalAccessException {
+    public MetaData(DB db, final Class<? extends OBJ>... classList) {
         MetaData.db = db;
         maxId = 0;
         for (Class<? extends OBJ> clazz : classList)
-            createOne(clazz);
+            try {
+                createOne(clazz);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         all = new Table[maxId + 1];
         for (final Map.Entry<Integer, Table> entry : byId.entrySet())
             all[entry.getKey()] = entry.getValue();
         OBJ.done = true;
+    }
+
+    public static Table[] getAll() {
+        return all;
     }
 
     private <T extends OBJ> void createOne(final Class<T> clazz) throws InstantiationException, IllegalAccessException {
@@ -129,6 +134,10 @@ public class MetaData {
             System.out.println(sql);
             PreparedStatement statement = db.getTransaction().prepareStatement(sql);
             statement.executeUpdate();
+        }
+
+        public Class<? extends OBJ> getType() {
+            return clazz;
         }
 
         public static class IllegalFieldDeclaration extends IllegalArgumentException {
