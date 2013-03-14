@@ -14,6 +14,7 @@ import java.util.*;
  * @since Apr 6, 2008 11:24:45 PM
  *
  * I'm going to put some life in in
+ * Now with upgrades
  */
 public class MetaData {
     private static final transient String REQUIRED = "is required";
