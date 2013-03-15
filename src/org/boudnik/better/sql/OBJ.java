@@ -14,22 +14,26 @@ import java.util.Date;
  */
 @TABLE(0)
 public class OBJ {
-    static transient volatile boolean done;
     private final transient Object[] values;
+    private final transient Metadata.Table meta;
     private transient int read;
     private transient int dirty;
-    private final transient Metadata.Table meta;
 
-//todo make another derived class with this field
+    //todo make another derived class with this field
 //    private final UUID uuid = new UUID();
     protected int length = 0;
 
-    public OBJ() {
-        if (done)
-            values = new Object[(meta = Metadata.get(getClass())).fields.length];
-        else {
+    //todo: remove ASAP. for compatibility only
+    protected OBJ() {
+        this(null);
+    }
+
+    protected OBJ(final Metadata metadata) {
+        if (metadata == null) {
             meta = null;
             values = null;
+        } else {
+            values = new Object[(meta = metadata.get(getClass())).fields.length];
         }
     }
 
@@ -68,8 +72,7 @@ public class OBJ {
         }
 
         protected FIELD(final T value) {
-            if (done)
-                set(value);
+            set(value);
         }
 
         public boolean accept() {

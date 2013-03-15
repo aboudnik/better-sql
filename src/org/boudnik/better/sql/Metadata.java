@@ -15,12 +15,10 @@ public class Metadata {
     private static final transient String REQUIRED = "is required";
     private static final transient String ZERO_LENGTH = "zero-length is prohibited";
 
-    private static Table[] all;
     private int maxId;
     private final DB db;
-    private static final Map<Integer, Metadata.Table> byId = new HashMap<Integer, Metadata.Table>();
-    private static final Map<Class<? extends OBJ>, Metadata.Table> byClass = new HashMap<Class<? extends OBJ>, Metadata.Table>();
-    private static final Map<Class<? extends OBJ>, Table> cache = new HashMap<Class<? extends OBJ>, Table>();
+    private final Map<Integer, Metadata.Table> byId = new HashMap<Integer, Metadata.Table>();
+    private final Map<Class<? extends OBJ>, Metadata.Table> byClass = new HashMap<Class<? extends OBJ>, Metadata.Table>();
 
 
     public Metadata(Class<? extends OBJ>... classList) {
@@ -36,16 +34,12 @@ public class Metadata {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        all = new Table[maxId + 1];
-        for (final Map.Entry<Integer, Table> entry : byId.entrySet())
-            all[entry.getKey()] = entry.getValue();
-        OBJ.done = true;
     }
 
     public static class IllegalFieldDeclaration extends IllegalArgumentException {
 
         public IllegalFieldDeclaration(final OBJ.FIELD field, final String message) {
-            this(field.getOwner().getClass(), get(getId(field.getOwner().getClass())).fields[field.index].getName(), message);
+            this(field.getOwner().getClass(), field.getMeta().getName(), message);
         }
 
         public IllegalFieldDeclaration(final Class<? extends OBJ> clazz, final String field, final String message) {
@@ -105,20 +99,16 @@ public class Metadata {
         }
     }
 
-    public static Table get(final int id) {
-        return all[id];
+    public Table get(final int id) {
+        return byId.get(id);
     }
 
-    public static Table[] getAll() {
-        return all;
+    public Collection<Table> getAll() {
+        return byId.values();
     }
 
-    public static Table get(Class<? extends OBJ> clazz) {
-        Table table = cache.get(clazz);
-        if (table == null) {
-            cache.put(clazz, table = get(clazz.getAnnotation(TABLE.class).value()));
-        }
-        return table;
+    public Table get(Class<? extends OBJ> clazz) {
+        return byClass.get(clazz);
     }
 
     public static String getShortName(final Class clazz) {
@@ -130,7 +120,7 @@ public class Metadata {
     }
 
     public void print() {
-        for (Table table : all)
+        for (Table table : getAll())
             if (table != null) {
                 System.out.println(table.render());
                 System.out.println();
