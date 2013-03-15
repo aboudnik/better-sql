@@ -11,7 +11,8 @@ import java.util.*;
  * @author Alexander Boudnik (shr)
  * @since Apr 6, 2008 11:24:45 PM
  */
-public class Metadata {
+public class Metadata implements Iterable<Metadata.Table> {
+
     private static final transient String REQUIRED = "is required";
     private static final transient String ZERO_LENGTH = "zero-length is prohibited";
 
@@ -99,12 +100,13 @@ public class Metadata {
         }
     }
 
-    public Table get(final int id) {
-        return byId.get(id);
+    @Override
+    public Iterator<Table> iterator() {
+        return byClass.values().iterator();
     }
 
-    public Collection<Table> getAll() {
-        return byId.values();
+    public Table get(final int id) {
+        return byId.get(id);
     }
 
     public Table get(Class<? extends OBJ> clazz) {
@@ -120,7 +122,7 @@ public class Metadata {
     }
 
     public void print() {
-        for (Table table : getAll())
+        for (Table table : this)
             if (table != null) {
                 System.out.println(table.render());
                 System.out.println();
