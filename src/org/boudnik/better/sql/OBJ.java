@@ -5,7 +5,6 @@
 package org.boudnik.better.sql;
 
 import java.io.File;
-import java.sql.*;
 import java.util.Date;
 
 /**
@@ -18,14 +17,15 @@ public class OBJ {
     private final transient Object[] values;
     private transient int read;
     private transient int dirty;
-    private final transient MetaData.Table meta;
+    private final transient Metadata.Table meta;
 
-    public final UUID uuid = new UUID();
+//todo make another derived class with this field
+//    private final UUID uuid = new UUID();
     protected int length = 0;
 
     public OBJ() {
         if (done)
-            values = new Object[(meta = MetaData.get(getClass().getAnnotation(TABLE.class).value())).fields.length];
+            values = new Object[(meta = Metadata.get(getClass())).fields.length];
         else {
             meta = null;
             values = null;
@@ -38,7 +38,7 @@ public class OBJ {
 
     public String toString() {
         final StringBuilder sb = new StringBuilder();
-        sb.append(MetaData.getShortName(getClass())).append("@").append(hashCode());
+        sb.append(Metadata.getShortName(getClass())).append("@").append(hashCode());
         for (int i = 0; i < meta.fields.length; i++) {
             try {
                 FIELD oField = (FIELD) this.meta.fields[i].field.get(this);
@@ -50,24 +50,14 @@ public class OBJ {
         return sb.toString();
     }
 
-    public void save() throws RuntimeException {
-        try {
-            PreparedStatement insert = meta.prepare(meta.renderInsert());
-            for (int i = 0; i < meta.fields.length; i++) {
-                MetaData.Field field = meta.fields[i];
-                Object value = values[i];
-                if (value == null)
-                    insert.setNull(i + 1, Types.NULL);
-                else
-                    insert.setObject(i + 1, value);
-            }
-            int i = insert.executeUpdate();
-            if (i != 1)
-                throw new SQLException("affected rows: " + i);
-            dirty = 0;
-        } catch (SQLException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+    public void save() {
+        System.out.println("OBJ.save");
+    }
+
+    public UUID getUuid() {
+        return null;
+//todo make another derived class with this field
+//        return uuid;
     }
 
     abstract class FIELD<T> implements Data<T> {
@@ -81,17 +71,20 @@ public class OBJ {
                 set(value);
         }
 
-        abstract void check(MetaData.Field field);
+        public boolean accept() {
+            return true;
+        }
+
+        abstract void check(Metadata.Field field);
 
         public void setValue(Object value) {
             values[index] = value;
         }
 
         public void set(final T value) {
-            if (meta.fields[index].isRequired() && value == null)
+            if (getMeta().isRequired() && value == null)
                 throw new NullPointerException();
-            setValue(value);
-            setDirty();
+            values[index] = value;
         }
 
         public T get() {
@@ -99,7 +92,7 @@ public class OBJ {
             return (T) values[index];
         }
 
-        public OBJ getOwner() {
+        OBJ getOwner() {
             return OBJ.this;
         }
 
@@ -107,7 +100,7 @@ public class OBJ {
             return null;
         }
 
-        public boolean isRead() {
+        boolean isRead() {
             return (read & (1 << index)) != 0;
         }
 
@@ -115,7 +108,7 @@ public class OBJ {
             read |= (1 << index);
         }
 
-        public boolean isDirty() {
+        boolean isDirty() {
             return (dirty & (1 << index)) != 0;
         }
 
@@ -124,19 +117,19 @@ public class OBJ {
         }
 
         public boolean isRequired() {
-            return meta.fields[index].isRequired();
+            return getMeta().isRequired();
         }
 
-        public boolean isDeferred() {
-            return meta.fields[index].isDeferred();
+        boolean isDeferred() {
+            return getMeta().isDeferred();
         }
 
         public int getMaxLength() {
-            return meta.fields[index].getLength();
+            return getMeta().getLength();
         }
 
         public Class<? extends OBJ.FIELD> getType() {
-            return meta.fields[index].getType();
+            return getMeta().getType();
         }
 
         @Override
@@ -160,7 +153,11 @@ public class OBJ {
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            return sb.append(meta.fields[index].getTitle()).append(" ").append(get()).toString();
+            return sb.append(getMeta().getTitle()).append(" ").append(get()).toString();
+        }
+
+        protected Metadata.Field getMeta() {
+            return meta.fields[index];
         }
     }
 
@@ -186,21 +183,27 @@ public class OBJ {
 
     @Type(deferred = false, required = true)
     public class UUID extends ComparableFIELD<Identity<OBJ>> {
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
             if (!meta.isRequired())
-                throw new MetaData.Table.IllegalNullable(this);
+                throw new Metadata.IllegalNullable(this);
+        }
+    }
+
+    @Type(deferred = false, required = false)
+    public class DATE extends ComparableFIELD<Date> {
+        void check(final Metadata.Field meta) {
         }
     }
 
     @Type(deferred = false, required = false)
     public class INT extends ComparableFIELD<Integer> {
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
         }
     }
 
     @Type(deferred = false, required = false)
     public class LONG extends ComparableFIELD<Long> {
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
         }
     }
 
@@ -221,12 +224,12 @@ public class OBJ {
             return ((Reference<T>) values[index]).get();
         }
 
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
         }
 
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            return sb.append(meta.fields[index].getTitle()).append(" ").append(values[index]).toString();
+            return sb.append(getMeta().getTitle()).append(" ").append(values[index]).toString();
         }
 
         Class getTarget() {
@@ -251,7 +254,7 @@ public class OBJ {
             return (T) PS.getInstance().getCodeObject((String) values[index]);
         }
 
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
         }
 
         Class getTarget() {
@@ -265,21 +268,21 @@ public class OBJ {
             super(false);
         }
 
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
             if (!meta.isRequired())
-                throw new MetaData.Table.IllegalNullable(this);
+                throw new Metadata.IllegalNullable(this);
         }
     }
 
     @Type(deferred = false, required = false)
     public class STR extends ComparableFIELD<String> {
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
 //            if (meta.getLength() == 0)
-//                throw new MetaData.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
+//                throw new Metadata.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
         }
 
         public void set(String value) {
-            if (value.length() <= meta.fields[index].getLength() && value.length() > 0)
+            if (value.length() <= getMeta().getLength() && value.length() > 0)
                 super.set(value);
         }
 
@@ -289,57 +292,43 @@ public class OBJ {
     }
 
     @Type(deferred = false, required = false)
-    public class DATE extends ComparableFIELD<Date> {
-        void check(final MetaData.Field meta) {
-            if (!meta.isRequired())
-                throw new MetaData.Table.IllegalNullable(this);
-        }
-
-        @Override
-        public void set(Date value) {
-            super.set(new java.sql.Date(value.getTime()));
-        }
-
-        @Override
-        public Date get() {
-            return new Date(super.get().getTime());
-        }
+    public class VARCHAR extends STR {
     }
 
     @Type(deferred = false, required = false)
-    public class TIMESTAMP extends ComparableFIELD<Date> {
-        void check(final MetaData.Field meta) {
-            if (!meta.isRequired())
-                throw new MetaData.Table.IllegalNullable(this);
+    public class CHAR extends ComparableFIELD<String> {
+        void check(final Metadata.Field meta) {
+//            if (meta.getLength() == 0)
+//                throw new Metadata.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
         }
 
-        @Override
-        public void set(Date value) {
-            super.set(new java.sql.Timestamp(value.getTime()));
+        public void set(String value) {
+            if (value.length() <= getMeta().getLength() && value.length() > 0)
+                super.set(value);
         }
 
-        @Override
-        public java.sql.Timestamp get() {
-            return new java.sql.Timestamp(super.get().getTime());
+        public ComparableFIELD<Integer> length() {
+            return new FUNC<Integer>(INT.class, "length", false, this);
         }
     }
 
     @Type(deferred = false, required = false)
     public class LONGSTR extends FIELD<String> {
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
             if (meta.getLength() == 0)
-                throw new MetaData.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
+                throw new Metadata.IllegalZeroLength(getOwner().getClass(), meta.getName());
         }
 
         public void set(String value) {
-            if (value.length() <= meta.fields[index].getLength() && value.length() > 0)
+            if (value.length() <= getMeta().getLength() && value.length() > 0)
                 super.set(value);
         }
+
     }
 
     @Type(deferred = true, required = false)
     public class IMAGE extends FIELD<File> {
-        void check(final MetaData.Field meta) {
+        void check(final Metadata.Field meta) {
         }
     }
 
@@ -349,7 +338,7 @@ public class OBJ {
         final boolean massive;
         final OBJ.FIELD argument;
 
-        void check(MetaData.Field field) {
+        void check(Metadata.Field field) {
         }
 
         public FUNC(Class clazz, String function, boolean massive, final OBJ.FIELD argument) {

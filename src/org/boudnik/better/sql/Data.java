@@ -9,13 +9,13 @@ package org.boudnik.better.sql;
  * @since Apr 6, 2008 3:47:06 PM
  */
 public interface Data<T> {
-    public void set(final T value);
+    void set(final T value);
 
-    public T get();
+    T get();
 
-    public Class<? extends OBJ.FIELD> getType();
+    Class<? extends OBJ.FIELD> getType();
 
-    public int getMaxLength();
+    int getMaxLength();
 
-    public boolean isRequired();
+    boolean isRequired();
 }

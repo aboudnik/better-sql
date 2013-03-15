@@ -5,26 +5,31 @@
 package org.boudnik.better.sql;
 
 import java.lang.reflect.Modifier;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.*;
 
 /**
  * @author Alexander Boudnik (shr)
  * @since Apr 6, 2008 11:24:45 PM
  */
-public class MetaData {
+public class Metadata {
     private static final transient String REQUIRED = "is required";
     private static final transient String ZERO_LENGTH = "zero-length is prohibited";
+
     private static Table[] all;
     private int maxId;
-    private static final Map<Integer, MetaData.Table> byId = new HashMap<Integer, MetaData.Table>();
-    private static final Map<Class<? extends OBJ>, MetaData.Table> byClass = new HashMap<Class<? extends OBJ>, MetaData.Table>();
-    private static DB db;
+    private final DB db;
+    private static final Map<Integer, Metadata.Table> byId = new HashMap<Integer, Metadata.Table>();
+    private static final Map<Class<? extends OBJ>, Metadata.Table> byClass = new HashMap<Class<? extends OBJ>, Metadata.Table>();
+    private static final Map<Class<? extends OBJ>, Table> cache = new HashMap<Class<? extends OBJ>, Table>();
 
-    public MetaData(DB db, final Class<? extends OBJ>... classList) {
-        MetaData.db = db;
+
+    public Metadata(Class<? extends OBJ>... classList) {
+        this(null, classList);
+    }
+
+    public Metadata(DB db, Class<? extends OBJ>... classList) {
         maxId = 0;
+        this.db = db;
         for (Class<? extends OBJ> clazz : classList)
             try {
                 createOne(clazz);
@@ -37,12 +42,36 @@ public class MetaData {
         OBJ.done = true;
     }
 
-    public static Table[] getAll() {
-        return all;
+    public static class IllegalFieldDeclaration extends IllegalArgumentException {
+
+        public IllegalFieldDeclaration(final OBJ.FIELD field, final String message) {
+            this(field.getOwner().getClass(), get(getId(field.getOwner().getClass())).fields[field.index].getName(), message);
+        }
+
+        public IllegalFieldDeclaration(final Class<? extends OBJ> clazz, final String field, final String message) {
+            super(getShortName(clazz) + '.' + field + ' ' + message);
+        }
+
     }
 
+    public static class IllegalZeroLength extends IllegalFieldDeclaration {
+
+        public IllegalZeroLength(final Class<? extends OBJ> clazz, final String field) {
+            super(clazz, field, ZERO_LENGTH);
+        }
+    }
+
+    public static class IllegalNullable extends IllegalFieldDeclaration {
+
+        public IllegalNullable(final OBJ.FIELD field) {
+            super(field, REQUIRED);
+        }
+    }
+
+    private static Set<Class<? extends OBJ>> visited = new HashSet<Class<? extends OBJ>>();
+
     private <T extends OBJ> void createOne(final Class<T> clazz) throws InstantiationException, IllegalAccessException {
-        if (!Table.visited.add(clazz))
+        if (!visited.add(clazz))
             return;
         if (clazz.getSuperclass() == Object.class)
             return;
@@ -60,16 +89,19 @@ public class MetaData {
         if (prev != null)
             throw new IllegalArgumentException("duplicate id " + id + " in " + prev.clazz + " and " + clazz);
         for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
             if (OBJ.FIELD.class.isAssignableFrom(field.getType())) {
                 final OBJ.FIELD oField = (OBJ.FIELD) field.get(obj);
                 final Field meta = new Field(field, oField.getTarget(), oField.index);
-                if ((field.getModifiers() & Modifier.FINAL) == 0)
-                    throw new Table.IllegalFieldDeclaration(oField, "should be final");
+                if ((modifiers & Modifier.FINAL) == 0)
+                    throw new IllegalFieldDeclaration(oField, "should be final");
                 table.byName.put(meta.getName(), meta);
                 table.fields[oField.index] = meta;
                 oField.check(meta);
-            } else if ((field.getModifiers() & Modifier.TRANSIENT) == 0)
-                throw new Table.IllegalFieldDeclaration(clazz, field.getName(), "should be transient");
+            } else if ((modifiers & Modifier.STATIC) == Modifier.STATIC) {
+            } else if ((modifiers & Modifier.TRANSIENT) == 0) {
+                throw new IllegalFieldDeclaration(clazz, field.getName(), "should be transient");
+            }
         }
     }
 
@@ -77,8 +109,16 @@ public class MetaData {
         return all[id];
     }
 
-    public static Table get(OBJ obj) {
-        return get(getId(obj.getClass()));
+    public static Table[] getAll() {
+        return all;
+    }
+
+    public static Table get(Class<? extends OBJ> clazz) {
+        Table table = cache.get(clazz);
+        if (table == null) {
+            cache.put(clazz, table = get(clazz.getAnnotation(TABLE.class).value()));
+        }
+        return table;
     }
 
     public static String getShortName(final Class clazz) {
@@ -92,27 +132,24 @@ public class MetaData {
     public void print() {
         for (Table table : all)
             if (table != null) {
-                System.out.println(table.renderCreate());
+                System.out.println(table.render());
                 System.out.println();
             }
     }
 
-    public void create() throws SQLException {
-        for (Table table : all)
-            if (table != null)
-                table.create();
-    }
-
-    public static class Table {
+    public class Table {
         protected final Class<? extends OBJ> clazz;
         @SuppressWarnings({"MismatchedQueryAndUpdateOfCollection"})
         private final Map<String, Field> byName = new HashMap<String, Field>();
         final Field[] fields;
-        private static Set<Class<? extends OBJ>> visited = new HashSet<Class<? extends OBJ>>();
+
+        public Class<? extends OBJ> getType() {
+            return clazz;
+        }
 
         public Table(final Class<? extends OBJ> clazz, final int length, Table zuper) {
             this.clazz = clazz;
-            fields = new MetaData.Field[length];
+            fields = new Metadata.Field[length];
             if (zuper != null)
                 System.arraycopy(zuper.fields, 0, fields, 0, zuper.fields.length);
         }
@@ -125,44 +162,7 @@ public class MetaData {
             return sb.toString();
         }
 
-        public PreparedStatement prepare(final String sql) throws SQLException {
-            return db.getTransaction().prepareStatement(sql);
-        }
-
-        public void create() throws SQLException {
-            String sql = renderCreate();
-            System.out.println(sql);
-            PreparedStatement statement = db.getTransaction().prepareStatement(sql);
-            statement.executeUpdate();
-        }
-
-        public Class<? extends OBJ> getType() {
-            return clazz;
-        }
-
-        public static class IllegalFieldDeclaration extends IllegalArgumentException {
-            public IllegalFieldDeclaration(final OBJ.FIELD field, final String message) {
-                this(field.getOwner().getClass(), get(field.getOwner()).fields[field.index].getName(), message);
-            }
-
-            public IllegalFieldDeclaration(final Class<? extends OBJ> clazz, final String field, final String message) {
-                super(getShortName(clazz) + '.' + field + ' ' + message);
-            }
-        }
-
-        public static class IllegalZeroLength extends IllegalFieldDeclaration {
-            public IllegalZeroLength(final Class<? extends OBJ> clazz, final String field) {
-                super(clazz, field, ZERO_LENGTH);
-            }
-        }
-
-        public static class IllegalNullable extends IllegalFieldDeclaration {
-            public IllegalNullable(final OBJ.FIELD field) {
-                super(field, REQUIRED);
-            }
-        }
-
-        public String renderCreate() {
+        public String render() {
             final StringBuilder sb = new StringBuilder();
             sb.append(String.format("CREATE TABLE %s (", getShortName(clazz)));
             String comma = "";
@@ -173,23 +173,9 @@ public class MetaData {
             sb.append(String.format("%n)"));
             return sb.toString();
         }
-
-        public String renderInsert() {
-            final StringBuilder list = new StringBuilder();
-            final StringBuilder values = new StringBuilder();
-            list.append(String.format("INSERT INTO %s (", getShortName(clazz)));
-            String comma = "";
-            for (Field field : fields) {
-                list.append(String.format("%s%s", comma, field.getName()));
-                values.append(String.format("%s?", comma));
-                comma = ",";
-            }
-            list.append(") values (").append(values).append(")");
-            return list.toString();
-        }
     }
 
-    public static class Field {
+    public class Field {
         final java.lang.reflect.Field field;
         private final Class<? extends OBJ.FIELD> type;
         private final int index;
@@ -233,9 +219,9 @@ public class MetaData {
 
         String getTitle() {
             if (target != null)
-                return String.format("%s:%s<%s>[%d]", getName(), MetaData.getShortName(getType()), MetaData.getShortName(target), index);
+                return String.format("%s:%s<%s>[%d]", getName(), Metadata.getShortName(getType()), Metadata.getShortName(target), index);
             else
-                return String.format("%s:%s[%d]", getName(), MetaData.getShortName(getType()), index);
+                return String.format("%s:%s[%d]", getName(), Metadata.getShortName(getType()), index);
         }
 
         public String toString() {
@@ -247,11 +233,12 @@ public class MetaData {
         }
 
         private String getColumnDefinition() {
-            return String.format(getSQLType(), getLength());
-        }
-
-        public String getSQLType() {
-            return db.get(type);
+            final Adapter adapter = db.adapters.get(getType());
+            try {
+                return adapter.getSchemaType(this);
+            } catch (Exception e) {
+                throw new RuntimeException("no adapter for " + getType());
+            }
         }
     }
 }

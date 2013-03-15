@@ -1,15 +1,9 @@
 package org.boudnik.better.sql;
 
-import com.sun.corba.se.impl.encoding.CDRInputObject;
-import com.sun.xml.internal.bind.v2.runtime.reflect.Accessor;
-
 import java.net.InetAddress;
 import java.net.PasswordAuthentication;
 import java.net.UnknownHostException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,27 +15,14 @@ public abstract class DB {
     private final String driverClass;
     private final String format;
     private final int port;
+    protected final Map<Class<? extends OBJ.FIELD>, Adapter> adapters = new HashMap<Class<? extends OBJ.FIELD>, Adapter>();
 
     protected String server;
     protected String database;
     private PasswordAuthentication authentication;
-    //todo: pool
-    private static Transaction current;
-    private static final Map<Class<? extends OBJ.FIELD>, String> byType = new HashMap<Class<? extends OBJ.FIELD>, String>() {
-        {
-            put(OBJ.INT.class, "int");
-            put(OBJ.LONG.class, "bigint");
-            put(OBJ.LONGSTR.class, "clob");
-            put(OBJ.IMAGE.class, "int");
-            put(OBJ.UUID.class, "bigint");
-            put(OBJ.REF.class, "bigint");
-            put(OBJ.CODEREF.class, "char(%d)");
-            put(OBJ.BOOL.class, "char(1)");
-            put(OBJ.STR.class, "varchar(%d)");
-            put(OBJ.DATE.class, "date");
-            put(OBJ.TIMESTAMP.class, "timestamp");
-        }
-    };
+    private Connection connection;
+
+    private static final Map<String, DB> dbs = new HashMap<String, DB>();
 
     protected String getUrl() {
         return String.format(format, server, getPort(), database);
@@ -66,7 +47,7 @@ public abstract class DB {
         return t;
     }
 
-    Connection getConnection() throws SQLException {
+    public Connection getConnection() throws SQLException {
         try {
             Class.forName(driverClass);
         } catch (ClassNotFoundException e) {
@@ -74,7 +55,7 @@ public abstract class DB {
         }
         final PasswordAuthentication authentication = getAuthentication();
         synchronized (this) {
-            return DriverManager.getConnection(getUrl(), authentication.getUserName(), String.valueOf(authentication.getPassword()));
+            return connection == null ? connection = DriverManager.getConnection(getUrl(), authentication.getUserName(), String.valueOf(authentication.getPassword())) : connection;
         }
     }
 
@@ -82,109 +63,77 @@ public abstract class DB {
         return port;
     }
 
-    public synchronized Transaction getTransaction() {
-        //todo: pool
-        return current == null ? current = new Transaction() : current;
-    }
-
-    public String get(Class<? extends OBJ.FIELD> type) {
-        return byType.get(type);
-    }
-
-    public void commit() {
-        getTransaction().commit();
-    }
-
-    class Transaction {
-        private Connection connection;
-
-        public synchronized Connection getConnection() {
-            try {
-                return connection == null ? connection = DB.this.getConnection() : connection;
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public PreparedStatement prepareStatement(String sql) throws SQLException {
-            return getConnection().prepareStatement(sql);
-        }
-
-        public void commit() {
-            try {
-                getConnection().commit();
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        void rollback() {
-            try {
-                getConnection().rollback();
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public static class Oracle extends DB {
-        public Oracle() {
+    public final static class Oracle extends DB {
+        Oracle() {
             super("oracle.jdbc.OracleDriver", "jdbc:oracle:thin:@%s:%d/%s", 1521);
-            byType.put(OBJ.INT.class, "number(9)");
         }
     }
 
     private abstract static class TDS extends DB {
-        public TDS(String format, int port) {
+        protected TDS(String format, int port) {
             super("net.sourceforge.jtds.jdbc.Driver", format, port);
         }
     }
 
-    public static class MSSQL extends TDS {
-        public MSSQL() {
+    public final static class MSSQL extends TDS {
+        MSSQL() {
             super("jdbc:jtds:sqlserver://%s:%d/%s", 1433);
         }
     }
 
     public static class Sybase extends TDS {
-        public Sybase() {
+        Sybase() {
             super("jdbc:jtds:sybase://%s:%d/%s", 5000);
         }
     }
 
-    public static class Postgres extends DB {
-        protected Postgres(String driverClass, String format, final int port) {
+    private abstract static class PostgresLike extends DB {
+        protected PostgresLike(String driverClass, String format, final int port) {
             super(driverClass, format, port);
         }
 
-        public Postgres() {
+        protected PostgresLike() {
             this("org.postgresql.Driver", "jdbc:postgresql://%s:%d/%s", 5432);
         }
     }
 
-    public static class Netezza extends Postgres {
-        public Netezza() {
+    public static class Postgres extends PostgresLike {
+        Postgres() {
+        }
+    }
+
+    public final static class Netezza extends PostgresLike {
+        Netezza() {
             super("org.netezza.Driver", "jdbc:netezza://%s:%d/%s", 5480);
         }
     }
 
-    public static class GreenPlum extends Postgres {
-        private GreenPlum() {
+    public final static class GreenPlum extends PostgresLike {
+        GreenPlum() {
         }
     }
 
-    public static class DB2 extends DB {
+    public final static class DB2 extends DB {
 //        446, 6789, or 50000
 
-        public DB2() {
+        DB2() {
             super("com.ibm.db2.jcc.DB2Driver", "jdbc:db2://%s:%d/%s", 50000);
         }
     }
 
-    public static class H2 extends DB {
-        public H2() {
-//            super("org.h2.Driver", "jdbc:h2:tcp://%s:%d/%s", 9092);
-            super("org.h2.Driver", "jdbc:h2:mem:%3$s", 0);
+    public final static class H2 extends DB {
+        H2() {
+            super("org.h2.Driver", "jdbc:h2:tcp://%s:%d/%s", 9092);
+            adapters.put(OBJ.INT.class, new Adapter.INT());
+            adapters.put(OBJ.LONG.class, new Adapter.LONG());
+            adapters.put(OBJ.STR.class, new Adapter.STR());
+            adapters.put(OBJ.CHAR.class, new Adapter.CHAR());
+            adapters.put(OBJ.VARCHAR.class, new Adapter.VARCHAR());
+            adapters.put(OBJ.LONGSTR.class, new Adapter.LONGSTR());
+            adapters.put(OBJ.CODEREF.class, new Adapter.CODEREF());
+            adapters.put(OBJ.IMAGE.class, new Adapter.IMAGE());
+            adapters.put(OBJ.REF.class, new Adapter.REF());
+            adapters.put(OBJ.DATE.class, new Adapter.DATE());
         }
     }
 }
