@@ -6,7 +6,9 @@ package org.boudnik.better.sql;
 
 
 import java.io.File;
-import java.util.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Date;
 
 /**
  * @author shr
@@ -200,6 +202,18 @@ public class OBJ {
     }
 
     @Type(deferred = false, required = false)
+    public class TIME extends ComparableFIELD<Time> {
+        void check(final Metadata.Field meta) {
+        }
+    }
+
+    @Type(deferred = false, required = false)
+    public class TIMESTAMP extends ComparableFIELD<Timestamp> {
+        void check(final Metadata.Field meta) {
+        }
+    }
+
+    @Type(deferred = false, required = false)
     public class INT extends ComparableFIELD<Integer> {
         void check(final Metadata.Field meta) {
         }
@@ -207,6 +221,12 @@ public class OBJ {
 
     @Type(deferred = false, required = false)
     public class LONG extends ComparableFIELD<Long> {
+        void check(final Metadata.Field meta) {
+        }
+    }
+
+    @Type(deferred = false, required = false)
+    public class NUMERIC extends ComparableFIELD<Number> {
         void check(final Metadata.Field meta) {
         }
     }
