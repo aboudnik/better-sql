@@ -19,7 +19,7 @@ public abstract class DB {
 
     protected String server;
     protected String database;
-    private PasswordAuthentication authentication;
+    protected PasswordAuthentication authentication;
     private Connection connection;
 
     private static final Map<String, DB> dbs = new HashMap<String, DB>();
