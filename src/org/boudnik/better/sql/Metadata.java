@@ -67,7 +67,8 @@ public class Metadata implements Iterable<Metadata.Table> {
         final Class<? super T> superclass = clazz.getSuperclass();
         if (superclass == Object.class)
             return;
-        createOne(visited, superclass);
+        //noinspection RedundantCast
+        createOne(visited, (Class<OBJ>) superclass);
         final int id = getId(clazz);
         if (id < 0)
             throw new IllegalArgumentException(clazz + " id should be > 0");
