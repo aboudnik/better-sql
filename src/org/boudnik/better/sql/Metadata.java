@@ -21,7 +21,6 @@ public class Metadata implements Iterable<Metadata.Table> {
     private final Map<Integer, Metadata.Table> byId = new HashMap<Integer, Metadata.Table>();
     private final Map<Class<? extends OBJ>, Metadata.Table> byClass = new HashMap<Class<? extends OBJ>, Metadata.Table>();
 
-
     public Metadata(Class<? extends OBJ>... classList) {
         this(null, classList);
     }
@@ -29,16 +28,16 @@ public class Metadata implements Iterable<Metadata.Table> {
     public Metadata(DB db, Class<? extends OBJ>... classList) {
         maxId = 0;
         this.db = db;
+        Set<Class<? extends OBJ>> visited = new HashSet<Class<? extends OBJ>>();
         for (Class<? extends OBJ> clazz : classList)
             try {
-                createOne(clazz);
+                createOne(visited, clazz);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
     }
 
     public static class IllegalFieldDeclaration extends IllegalArgumentException {
-
         public IllegalFieldDeclaration(final OBJ.FIELD field, final String message) {
             this(field.getOwner().getClass(), field.getMeta().getName(), message);
         }
@@ -46,38 +45,34 @@ public class Metadata implements Iterable<Metadata.Table> {
         public IllegalFieldDeclaration(final Class<? extends OBJ> clazz, final String field, final String message) {
             super(getShortName(clazz) + '.' + field + ' ' + message);
         }
-
     }
 
     public static class IllegalZeroLength extends IllegalFieldDeclaration {
-
         public IllegalZeroLength(final Class<? extends OBJ> clazz, final String field) {
             super(clazz, field, ZERO_LENGTH);
         }
     }
 
     public static class IllegalNullable extends IllegalFieldDeclaration {
-
         public IllegalNullable(final OBJ.FIELD field) {
             super(field, REQUIRED);
         }
     }
 
-    private static Set<Class<? extends OBJ>> visited = new HashSet<Class<? extends OBJ>>();
-
-    private <T extends OBJ> void createOne(final Class<T> clazz) throws InstantiationException, IllegalAccessException {
+    private <T extends OBJ> void createOne(Set<Class<? extends OBJ>> visited, final Class<T> clazz) throws InstantiationException, IllegalAccessException {
         if (!visited.add(clazz))
             return;
-        if (clazz.getSuperclass() == Object.class)
+        if ((clazz.getModifiers() & Modifier.ABSTRACT) == Modifier.ABSTRACT)
             return;
-        //noinspection unchecked
-        Class<T> superClass = (Class<T>) clazz.getSuperclass();
-        createOne(superClass);
+        final Class<? super T> superclass = clazz.getSuperclass();
+        if (superclass == Object.class)
+            return;
+        createOne(visited, superclass);
         final int id = getId(clazz);
         if (id < 0)
             throw new IllegalArgumentException(clazz + " id should be > 0");
         final OBJ obj = clazz.newInstance();
-        final Table table = new Table(clazz, obj.length, byClass.get(superClass));
+        @SuppressWarnings("SuspiciousMethodCalls") final Table table = new Table(clazz, obj.length, byClass.get(superclass));
         maxId = Math.max(maxId, id);
         final Table prev = byId.put(id, table);
         byClass.put(clazz, table);

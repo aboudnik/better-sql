@@ -67,7 +67,7 @@ public class OBJ {
 //        return uuid;
     }
 
-    abstract class FIELD<T> implements Data<T> {
+    protected abstract class FIELD<T> implements Data<T> {
         public int index = length++;
 
         protected FIELD() {
