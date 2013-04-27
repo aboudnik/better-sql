@@ -39,13 +39,15 @@ public class OBJ {
         }
     }
 
+    final static ComparableFIELD[] EMPTY = new ComparableFIELD[0];
+
     public ComparableFIELD[] getKey() {
-        return new ComparableFIELD[0];
+        return EMPTY;
     }
 
     public String toString() {
         final StringBuilder sb = new StringBuilder();
-        sb.append(Metadata.getShortName(getClass())).append("@").append(hashCode());
+        sb.append(getClass().getSimpleName()).append("@").append(hashCode());
         for (int i = 0; i < meta.fields.length; i++) {
             try {
                 FIELD oField = (FIELD) this.meta.fields[i].field.get(this);
@@ -59,6 +61,18 @@ public class OBJ {
 
     public void save() {
         System.out.println("OBJ.save");
+    }
+
+    public Metadata.Table getTable() {
+        return meta;
+    }
+
+    protected void setValue(Metadata.Field field, Object value) {
+        values[field.getIndex()] = value;
+    }
+
+    protected Object getValue(Metadata.Field field) {
+        return values[field.getIndex()];
     }
 
     public UUID getUuid() {

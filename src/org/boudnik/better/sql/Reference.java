@@ -49,7 +49,7 @@ public class Reference<T extends OBJ> implements Serializable, Cloneable {
     }
 
     public String toString() {
-        return id == null ? Metadata.getShortName(object.getClass()) + "@" + System.identityHashCode(object) : id.toString();
+        return id == null ? object.getClass().getSimpleName() + "@" + System.identityHashCode(object) : id.toString();
     }
 
     public int hashCode() {

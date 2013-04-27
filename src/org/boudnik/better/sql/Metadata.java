@@ -43,7 +43,7 @@ public class Metadata implements Iterable<Metadata.Table> {
         }
 
         public IllegalFieldDeclaration(final Class<? extends OBJ> clazz, final String field, final String message) {
-            super(getShortName(clazz) + '.' + field + ' ' + message);
+            super(clazz.getSimpleName() + '.' + field + ' ' + message);
         }
     }
 
@@ -109,10 +109,6 @@ public class Metadata implements Iterable<Metadata.Table> {
         return byClass.get(clazz);
     }
 
-    public static String getShortName(final Class clazz) {
-        return clazz.getName().substring(clazz.getName().lastIndexOf('.') + 1);
-    }
-
     private static Integer getId(final Class<? extends OBJ> clazz) {
         return clazz.getAnnotation(TABLE.class).value();
     }
@@ -131,8 +127,16 @@ public class Metadata implements Iterable<Metadata.Table> {
         private final Map<String, Field> byName = new HashMap<String, Field>();
         final Field[] fields;
 
+        public OBJ create() throws InstantiationException, IllegalAccessException {
+            return getType().newInstance();
+        }
+
         public Class<? extends OBJ> getType() {
             return clazz;
+        }
+
+        public Field[] getFields() {
+            return fields;
         }
 
         public Table(final Class<? extends OBJ> clazz, final int length, Table zuper) {
@@ -144,7 +148,7 @@ public class Metadata implements Iterable<Metadata.Table> {
 
         public String toString() {
             final StringBuilder sb = new StringBuilder();
-            sb.append(String.format("%s(%d)", getShortName(clazz), getId(clazz)));
+            sb.append(String.format("%s(%d)", clazz.getSimpleName(), getId(clazz)));
             for (Field field : fields)
                 sb.append(String.format("%n%s", field));
             return sb.toString();
@@ -152,7 +156,7 @@ public class Metadata implements Iterable<Metadata.Table> {
 
         public String render() {
             final StringBuilder sb = new StringBuilder();
-            sb.append(String.format("CREATE TABLE %s (", getShortName(clazz)));
+            sb.append(String.format("CREATE TABLE %s (", clazz.getSimpleName()));
             String comma = "";
             for (Field field : fields) {
                 sb.append(String.format("%s%n\t%s", comma, field.getDefinition()));
@@ -193,6 +197,10 @@ public class Metadata implements Iterable<Metadata.Table> {
             return name;
         }
 
+        public int getIndex() {
+            return index;
+        }
+
         boolean isRequired() {
             return isRequired;
         }
@@ -207,13 +215,13 @@ public class Metadata implements Iterable<Metadata.Table> {
 
         String getTitle() {
             if (target != null)
-                return String.format("%s:%s<%s>[%d]", getName(), Metadata.getShortName(getType()), Metadata.getShortName(target), index);
+                return String.format("%s:%s<%s>[%d]", getName(), getType().getSimpleName(), target.getSimpleName(), index);
             else
-                return String.format("%s:%s[%d]", getName(), Metadata.getShortName(getType()), index);
+                return String.format("%s:%s[%d]", getName(), getType().getSimpleName(), index);
         }
 
         public String toString() {
-            return String.format("%s:%s[%d] %s%s%d", getName(), getShortName(getType()), index, isRequired() ? "NOT NULL" : "NULL", isDeferred() ? " DEFERRED " : " ", getLength());
+            return String.format("%s:%s[%d] %s%s%d", getName(), getType().getSimpleName(), index, isRequired() ? "NOT NULL" : "NULL", isDeferred() ? " DEFERRED " : " ", getLength());
         }
 
         public String getDefinition() {
