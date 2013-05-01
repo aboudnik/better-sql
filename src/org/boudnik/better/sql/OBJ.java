@@ -41,6 +41,7 @@ public class OBJ {
 
     final static ComparableFIELD[] EMPTY = new ComparableFIELD[0];
 
+    @SuppressWarnings("UnusedDeclaration")
     public ComparableFIELD[] getKey() {
         return EMPTY;
     }
@@ -81,7 +82,7 @@ public class OBJ {
 //        return uuid;
     }
 
-    protected abstract class FIELD<T> implements Data<T> {
+    public abstract class FIELD<T> implements Data<T> {
         public int index = length++;
 
         protected FIELD() {
@@ -91,6 +92,7 @@ public class OBJ {
             set(value);
         }
 
+        @SuppressWarnings("UnusedDeclaration")
         public boolean accept() {
             return true;
         }
@@ -112,26 +114,26 @@ public class OBJ {
             return (T) values[index];
         }
 
-        OBJ getOwner() {
-            return OBJ.this;
-        }
-
         Class getTarget() {
             return null;
         }
 
+        @SuppressWarnings("UnusedDeclaration")
         boolean isRead() {
             return (read & (1 << index)) != 0;
         }
 
+        @SuppressWarnings("UnusedDeclaration")
         void setRead() {
             read |= (1 << index);
         }
 
+        @SuppressWarnings("UnusedDeclaration")
         boolean isDirty() {
             return (dirty & (1 << index)) != 0;
         }
 
+        @SuppressWarnings("UnusedDeclaration")
         void setDirty() {
             dirty |= (1 << index);
         }
@@ -140,6 +142,7 @@ public class OBJ {
             return getMeta().isRequired();
         }
 
+        @SuppressWarnings("UnusedDeclaration")
         boolean isDeferred() {
             return getMeta().isDeferred();
         }
@@ -163,14 +166,6 @@ public class OBJ {
             throw new InternalError("Not supported.");
         }
 
-        String getFunction() {
-            return null;
-        }
-
-        boolean isMassiveFunction() {
-            return false;
-        }
-
         public String toString() {
             StringBuilder sb = new StringBuilder();
             return sb.append(getMeta().getTitle()).append(" ").append(get()).toString();
@@ -189,10 +184,6 @@ public class OBJ {
             super(value);
         }
 
-        public ComparableFIELD<Integer> count() {
-            return new FUNC<Integer>(INT.class, "count", true, this);
-        }
-
         public int compareTo(FIELD<T> o) {
             //noinspection unchecked
             Comparable<T> o1 = (Comparable<T>) get();
@@ -205,7 +196,7 @@ public class OBJ {
     public class UUID extends ComparableFIELD<Identity<OBJ>> {
         void check(final Metadata.Field meta) {
             if (!meta.isRequired())
-                throw new Metadata.IllegalNullable(this);
+                throw new Metadata.IllegalNullable(meta.field);
         }
     }
 
@@ -300,6 +291,7 @@ public class OBJ {
         }
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     @Type(deferred = false, required = true)
     public class BOOL extends ComparableFIELD<Boolean> {
         public BOOL() {
@@ -308,25 +300,24 @@ public class OBJ {
 
         void check(final Metadata.Field meta) {
             if (!meta.isRequired())
-                throw new Metadata.IllegalNullable(this);
+                throw new Metadata.IllegalNullable(meta.field);
         }
     }
 
     @Type(deferred = false, required = false)
     public class STR extends ComparableFIELD<String> {
         void check(final Metadata.Field meta) {
-//            if (meta.getLength() == 0)
-//                throw new Metadata.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
+            if (meta.getLength() == 0)
+                throw new Metadata.IllegalZeroLength(meta.field);
         }
 
         public void set(String value) {
-            if (value.length() <= getMeta().getLength() && value.length() > 0)
+            if (value == null)
+                super.set(null);
+            else if (value.length() <= getMeta().getLength() && value.length() > 0)
                 super.set(value);
         }
 
-        public ComparableFIELD<Integer> length() {
-            return new FUNC<Integer>(INT.class, "length", false, this);
-        }
     }
 
     @Type(deferred = false, required = false)
@@ -336,8 +327,8 @@ public class OBJ {
     @Type(deferred = false, required = false)
     public class CHAR extends ComparableFIELD<String> {
         void check(final Metadata.Field meta) {
-//            if (meta.getLength() == 0)
-//                throw new Metadata.Table.IllegalZeroLength(getOwner().getClass(), meta.getName());
+            if (meta.getLength() == 0)
+                throw new Metadata.IllegalZeroLength(meta.field);
         }
 
         public void set(String value) {
@@ -345,16 +336,13 @@ public class OBJ {
                 super.set(value);
         }
 
-        public ComparableFIELD<Integer> length() {
-            return new FUNC<Integer>(INT.class, "length", false, this);
-        }
     }
 
     @Type(deferred = false, required = false)
     public class LONGSTR extends FIELD<String> {
         void check(final Metadata.Field meta) {
             if (meta.getLength() == 0)
-                throw new Metadata.IllegalZeroLength(getOwner().getClass(), meta.getName());
+                throw new Metadata.IllegalZeroLength(meta.field);
         }
 
         public void set(String value) {
@@ -370,34 +358,4 @@ public class OBJ {
         }
     }
 
-    class FUNC<T extends Comparable<T>> extends OBJ.ComparableFIELD<T> {
-        final Class<? extends OBJ.FIELD> clazz;
-        final String function;
-        final boolean massive;
-        final OBJ.FIELD argument;
-
-        void check(Metadata.Field field) {
-        }
-
-        public FUNC(Class clazz, String function, boolean massive, final OBJ.FIELD argument) {
-            //noinspection unchecked
-            this.clazz = clazz;
-            this.function = function;
-            this.massive = massive;
-            this.argument = argument;
-//            argument.getName(), argument.getOwner(), argument.index;
-        }
-
-        public String getFunction() {
-            return function;
-        }
-
-        public boolean isMassiveFunction() {
-            return massive;
-        }
-
-        public Class<? extends OBJ.FIELD> getType() {
-            return clazz;
-        }
-    }
 }

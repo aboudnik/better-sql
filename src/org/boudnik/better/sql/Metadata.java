@@ -16,7 +16,6 @@ public class Metadata implements Iterable<Metadata.Table> {
     private static final transient String REQUIRED = "is required";
     private static final transient String ZERO_LENGTH = "zero-length is prohibited";
 
-    private int maxId;
     private final DB db;
     private final Map<Integer, Metadata.Table> byId = new HashMap<Integer, Metadata.Table>();
     private final Map<Class<? extends OBJ>, Metadata.Table> byClass = new HashMap<Class<? extends OBJ>, Metadata.Table>();
@@ -26,43 +25,36 @@ public class Metadata implements Iterable<Metadata.Table> {
     }
 
     public Metadata(DB db, Class<? extends OBJ>... classList) {
-        maxId = 0;
         this.db = db;
         Set<Class<? extends OBJ>> visited = new HashSet<Class<? extends OBJ>>();
         for (Class<? extends OBJ> clazz : classList)
-            try {
-                createOne(visited, clazz);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+            createOne(visited, clazz);
     }
 
     public static class IllegalFieldDeclaration extends IllegalArgumentException {
-        public IllegalFieldDeclaration(final OBJ.FIELD field, final String message) {
-            this(field.getOwner().getClass(), field.getMeta().getName(), message);
+        public IllegalFieldDeclaration(final java.lang.reflect.Field field, final String message) {
+            this(field.getDeclaringClass(), field.getName(), message);
         }
 
-        public IllegalFieldDeclaration(final Class<? extends OBJ> clazz, final String field, final String message) {
+        public IllegalFieldDeclaration(final Class clazz, final String field, final String message) {
             super(clazz.getSimpleName() + '.' + field + ' ' + message);
         }
     }
 
     public static class IllegalZeroLength extends IllegalFieldDeclaration {
-        public IllegalZeroLength(final Class<? extends OBJ> clazz, final String field) {
-            super(clazz, field, ZERO_LENGTH);
+        public IllegalZeroLength(java.lang.reflect.Field field) {
+            super(field, ZERO_LENGTH);
         }
     }
 
     public static class IllegalNullable extends IllegalFieldDeclaration {
-        public IllegalNullable(final OBJ.FIELD field) {
+        public IllegalNullable(final java.lang.reflect.Field field) {
             super(field, REQUIRED);
         }
     }
 
-    private <T extends OBJ> void createOne(Set<Class<? extends OBJ>> visited, final Class<T> clazz) throws InstantiationException, IllegalAccessException {
+    private <T extends OBJ> void createOne(Set<Class<? extends OBJ>> visited, final Class<T> clazz) {
         if (!visited.add(clazz))
-            return;
-        if ((clazz.getModifiers() & Modifier.ABSTRACT) == Modifier.ABSTRACT)
             return;
         final Class<? super T> superclass = clazz.getSuperclass();
         if (superclass == Object.class)
@@ -72,28 +64,44 @@ public class Metadata implements Iterable<Metadata.Table> {
         final int id = getId(clazz);
         if (id < 0)
             throw new IllegalArgumentException(clazz + " id should be > 0");
-        final OBJ obj = clazz.newInstance();
-        @SuppressWarnings("SuspiciousMethodCalls") final Table table = new Table(clazz, obj.length, byClass.get(superclass));
-        maxId = Math.max(maxId, id);
-        final Table prev = byId.put(id, table);
+        @SuppressWarnings("RedundantCast") final Table table = new Table(clazz, getFields(clazz.getDeclaredFields()).size(), byClass.get((Class<OBJ>) superclass));
         byClass.put(clazz, table);
+        final Table prev = byId.put(id, table);
         if (prev != null)
             throw new IllegalArgumentException("duplicate id " + id + " in " + prev.clazz + " and " + clazz);
-        for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
-            int modifiers = field.getModifiers();
+        try {
+            if (!Modifier.isAbstract(clazz.getModifiers())) {
+                OBJ obj = clazz.newInstance();
+                for (java.lang.reflect.Field field : getFields(clazz.getFields())) {
+                    final OBJ.FIELD oField = (OBJ.FIELD) field.get(obj);
+                    final Field meta = new Field(field, oField.getTarget(), oField.index);
+                    table.byName.put(meta.getName(), meta);
+                    table.fields[oField.index] = meta;
+                    oField.check(meta);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private List<java.lang.reflect.Field> getFields(java.lang.reflect.Field[] declaredFields) {
+        List<java.lang.reflect.Field> fields = new ArrayList<java.lang.reflect.Field>();
+        for (java.lang.reflect.Field field : declaredFields) {
+            final int modifiers = field.getModifiers();
             if (OBJ.FIELD.class.isAssignableFrom(field.getType())) {
-                final OBJ.FIELD oField = (OBJ.FIELD) field.get(obj);
-                final Field meta = new Field(field, oField.getTarget(), oField.index);
-                if ((modifiers & Modifier.FINAL) == 0)
-                    throw new IllegalFieldDeclaration(oField, "should be final");
-                table.byName.put(meta.getName(), meta);
-                table.fields[oField.index] = meta;
-                oField.check(meta);
-            } else if ((modifiers & Modifier.STATIC) == Modifier.STATIC) {
-            } else if ((modifiers & Modifier.TRANSIENT) == 0) {
-                throw new IllegalFieldDeclaration(clazz, field.getName(), "should be transient");
+                if (!Modifier.isFinal(modifiers)) {
+                    throw new IllegalFieldDeclaration(field, "should be final");
+                } else if (Modifier.isStatic(modifiers)) { //skip it
+//todo: Transient
+//            } else if (!Modifier.isTransient(modifiers)) {
+//                throw new IllegalFieldDeclaration(field, "should be transient");
+                } else {
+                    fields.add(field);
+                }
             }
         }
+        return fields;
     }
 
     @Override
@@ -141,9 +149,11 @@ public class Metadata implements Iterable<Metadata.Table> {
 
         public Table(final Class<? extends OBJ> clazz, final int length, Table zuper) {
             this.clazz = clazz;
-            fields = new Metadata.Field[length];
-            if (zuper != null)
-                System.arraycopy(zuper.fields, 0, fields, 0, zuper.fields.length);
+            fields = new Metadata.Field[length + (zuper != null ? zuper.fields.length : 0)];
+        }
+
+        public boolean isAbstract() {
+            return Modifier.isAbstract(clazz.getModifiers());
         }
 
         public String toString() {
@@ -211,6 +221,11 @@ public class Metadata implements Iterable<Metadata.Table> {
 
         int getLength() {
             return length;
+        }
+
+        @SuppressWarnings("UnusedDeclaration")
+        public java.lang.reflect.Field getReflection() {
+            return field;
         }
 
         String getTitle() {
