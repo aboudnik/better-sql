@@ -93,9 +93,6 @@ public class Metadata implements Iterable<Metadata.Table> {
                 if (!Modifier.isFinal(modifiers)) {
                     throw new IllegalFieldDeclaration(field, "should be final");
                 } else if (Modifier.isStatic(modifiers)) { //skip it
-//todo: Transient
-//            } else if (!Modifier.isTransient(modifiers)) {
-//                throw new IllegalFieldDeclaration(field, "should be transient");
                 } else {
                     fields.add(field);
                 }
@@ -186,6 +183,7 @@ public class Metadata implements Iterable<Metadata.Table> {
         private final int length;
         private final boolean isRequired;
         private final boolean isDeferred;
+        private final boolean isTransient;
 
         public Field(final java.lang.reflect.Field field, final Class target, final int index) {
             this.field = field;
@@ -194,9 +192,13 @@ public class Metadata implements Iterable<Metadata.Table> {
             name = (field.getAnnotation(NAME.class) == null || "".equals(field.getAnnotation(NAME.class).value())) ? field.getName() : field.getAnnotation(NAME.class).value();
             isRequired = field.getAnnotation(MANDATORY.class) == null ? field.getType().getAnnotation(Type.class).required() : field.getAnnotation(MANDATORY.class).value();
             isDeferred = field.getAnnotation(DEFERRED.class) == null ? field.getType().getAnnotation(Type.class).deferred() : field.getAnnotation(DEFERRED.class).value();
+            isTransient = Modifier.isTransient(field.getModifiers());
             length = field.getAnnotation(LENGTH.class) == null ? 0 : field.getAnnotation(LENGTH.class).value();
-            //noinspection unchecked
             type = (Class<? extends OBJ.FIELD>) field.getType();
+        }
+
+        public boolean isTransient() {
+            return isTransient;
         }
 
         public Class<? extends OBJ.FIELD> getType() {
