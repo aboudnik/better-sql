@@ -180,6 +180,7 @@ public class Metadata implements Iterable<Metadata.Table> {
         private final int index;
         private final Class target;
         private final String name;
+        private final String pattern;
         private final int length;
         private final boolean isRequired;
         private final boolean isDeferred;
@@ -195,10 +196,15 @@ public class Metadata implements Iterable<Metadata.Table> {
             isTransient = Modifier.isTransient(field.getModifiers());
             length = field.getAnnotation(LENGTH.class) == null ? 0 : field.getAnnotation(LENGTH.class).value();
             type = (Class<? extends OBJ.FIELD>) field.getType();
+            pattern = field.getAnnotation(PATTERN.class)== null ? "".equals(field.getType().getAnnotation(Type.class).pattern()) ? null : field.getType().getAnnotation(Type.class).pattern() : field.getAnnotation(PATTERN.class).value();
         }
 
         public boolean isTransient() {
             return isTransient;
+        }
+
+        public String getPattern() {
+            return pattern;
         }
 
         public Class<? extends OBJ.FIELD> getType() {

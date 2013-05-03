@@ -11,14 +11,11 @@ import java.lang.annotation.Target;
 
 /**
  * @author shr
- * @since Aug 31, 2005 6:48:38 PM
+ * @since Sep 1, 2005 3:39:31 AM
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface Type {
-    boolean required();
-
-    boolean deferred() default false;
-
-    String pattern() default "";
+@Target(ElementType.FIELD)
+public @interface PATTERN {
+    String value();
 }
+

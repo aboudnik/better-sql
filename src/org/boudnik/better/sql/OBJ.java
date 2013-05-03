@@ -192,7 +192,7 @@ public class OBJ {
         }
     }
 
-    @Type(deferred = false, required = true)
+    @Type(required = true)
     public class UUID extends ComparableFIELD<Identity<OBJ>> {
         void check(final Metadata.Field meta) {
             if (!meta.isRequired())
@@ -200,43 +200,43 @@ public class OBJ {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class DATE extends ComparableFIELD<Date> {
         void check(final Metadata.Field meta) {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class TIME extends ComparableFIELD<Time> {
         void check(final Metadata.Field meta) {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class TIMESTAMP extends ComparableFIELD<Timestamp> {
         void check(final Metadata.Field meta) {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class INT extends ComparableFIELD<Integer> {
         void check(final Metadata.Field meta) {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class LONG extends ComparableFIELD<Long> {
         void check(final Metadata.Field meta) {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class NUMERIC extends ComparableFIELD<Number> {
         void check(final Metadata.Field meta) {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class REF<T extends OBJ> extends ComparableFIELD<T> {
         final Class<T> clazz;
 
@@ -266,7 +266,7 @@ public class OBJ {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class CODEREF<T extends CodeObject> extends ComparableFIELD<T> {
         final Class<T> clazz;
 
@@ -292,7 +292,7 @@ public class OBJ {
     }
 
     @SuppressWarnings("UnusedDeclaration")
-    @Type(deferred = false, required = true)
+    @Type(required = true)
     public class BOOL extends ComparableFIELD<Boolean> {
         public BOOL() {
             super(false);
@@ -304,7 +304,7 @@ public class OBJ {
         }
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class STR extends ComparableFIELD<String> {
         void check(final Metadata.Field meta) {
             if (meta.getLength() == 0)
@@ -320,11 +320,11 @@ public class OBJ {
 
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class VARCHAR extends STR {
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class CHAR extends ComparableFIELD<String> {
         void check(final Metadata.Field meta) {
             if (meta.getLength() == 0)
@@ -338,7 +338,7 @@ public class OBJ {
 
     }
 
-    @Type(deferred = false, required = false)
+    @Type(required = false)
     public class LONGSTR extends FIELD<String> {
         void check(final Metadata.Field meta) {
             if (meta.getLength() == 0)
