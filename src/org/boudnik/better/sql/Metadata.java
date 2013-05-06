@@ -132,8 +132,12 @@ public class Metadata implements Iterable<Metadata.Table> {
         private final Map<String, Field> byName = new HashMap<String, Field>();
         final Field[] fields;
 
-        public OBJ create() throws InstantiationException, IllegalAccessException {
-            return getType().newInstance();
+        public OBJ create() {
+            try {
+                return getType().newInstance();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public Class<? extends OBJ> getType() {
