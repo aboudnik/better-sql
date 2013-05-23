@@ -6,6 +6,7 @@ package org.boudnik.better.sql;
 
 
 import java.io.File;
+import java.io.Serializable;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Date;
@@ -15,8 +16,8 @@ import java.sql.Date;
  * @since Aug 31, 2005 6:43:59 PM
  */
 @TABLE(0)
-public class OBJ {
-    private final transient Object[] values;
+public class OBJ implements Serializable {
+    private final Object[] values;
     private final transient Metadata.Table meta;
     private transient int read;
     private transient int dirty;
@@ -46,16 +47,26 @@ public class OBJ {
         return EMPTY;
     }
 
+//    public String toString() {
+//        final StringBuilder sb = new StringBuilder();
+//        sb.append(getClass().getSimpleName()).append("@").append(hashCode());
+//        for (int i = 0; i < meta.fields.length; i++) {
+//            try {
+//                FIELD oField = (FIELD) this.meta.fields[i].field.get(this);
+//                sb.append(" ").append(oField);
+//            } catch (IllegalAccessException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//        return sb.toString();
+//    }
+
+    @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         sb.append(getClass().getSimpleName()).append("@").append(hashCode());
-        for (int i = 0; i < meta.fields.length; i++) {
-            try {
-                FIELD oField = (FIELD) this.meta.fields[i].field.get(this);
-                sb.append(" ").append(oField);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+        for (Object value : values) {
+            sb.append("|").append(value);
         }
         return sb.toString();
     }
@@ -82,7 +93,7 @@ public class OBJ {
 //        return uuid;
     }
 
-    public abstract class FIELD<T> implements Data<T> {
+    public abstract class FIELD<T> implements Data<T>, Serializable {
         public int index = length++;
 
         protected FIELD() {
