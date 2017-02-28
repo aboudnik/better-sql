@@ -1,0 +1,7 @@
+# Created by .ignore support plugin (hsz.mobi)
+hs_err_pid*
+.idea
+target
+*.iml
+
+
