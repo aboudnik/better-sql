@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 Alexandre Boudnik (shr). All rights reserved.
+ * Copyright (c) 2009-2017 Alexandre Boudnik (shr). All rights reserved.
  */
 
 package org.boudnik.better.sql;
@@ -7,9 +7,9 @@ package org.boudnik.better.sql;
 
 import java.io.File;
 import java.io.Serializable;
+import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.sql.Date;
 
 /**
  * @author shr

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2009-2017 Alexandre Boudnik (shr). All rights reserved.
+ */
+
 package org.boudnik.better.sql;
 
 /**
