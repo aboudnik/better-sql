@@ -13,7 +13,7 @@ import org.boudnik.better.sql.*;
 @TABLE(20)
 public class Foo extends OBJ {
     @MANDATORY
-//    @LENGTH(32)
+    @LENGTH(32)
     @NAME("nickName")
     public final STR name = new STR();
     @LENGTH(8192)
